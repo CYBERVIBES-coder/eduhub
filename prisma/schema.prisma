@@ -6,8 +6,11 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  // Pooled connection (PgBouncer, port 6543) used by the app at runtime
+  url       = env("DATABASE_URL")
+  // Direct connection (port 5432) used by Prisma Migrate / introspection
+  directUrl = env("DIRECT_URL")
 }
 
 // Enum for user roles
@@ -62,7 +65,7 @@ model Lecture {
   id              String    @id @default(cuid())
   courseId        String
   title           String
-  "order"         Int       // SQL reserved word, quoted
+  order           Int       @map("order") // SQL reserved word mapped explicitly
   videoUrl        String?
   notesMarkdown   String?
   publishedAt     DateTime?
