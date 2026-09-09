@@ -1,208 +1,177 @@
-import { prisma } from '@/lib/prisma'
-import { notFound } from 'next/navigation'
-import Link from 'next/link'
-import { MarkdownRenderer } from '@/components/MarkdownRenderer'
+'use client'
 
-interface LectureViewerPageProps {
-  params: {
-    id: string
-    lectureId: string
-  }
+import { useEffect, useState } from 'react'
+import Link from 'next/link'
+import { useParams } from 'next/navigation'
+import ReactMarkdown from 'react-markdown'
+
+interface Attachment {
+  id: string
+  filename: string
+  fileUrl: string
+  fileType: string
 }
 
-export async function generateMetadata({ params }: LectureViewerPageProps) {
-  const lecture = await prisma.lecture.findUnique({
-    where: { id: params.lectureId },
-    include: { course: true },
-  })
-
-  if (!lecture) {
-    return { title: 'Lecture not found' }
-  }
-
-  return {
-    title: `${lecture.title} - ${lecture.course.title} - EduHub`,
+interface Lecture {
+  id: string
+  title: string
+  order: number
+  videoUrl: string | null
+  notesMarkdown: string | null
+  attachments: Attachment[]
+  course: {
+    id: string
+    title: string
   }
 }
 
 /**
- * Lecture viewer page showing video, notes, and attachments.
- * Server component using Prisma to fetch lecture data.
+ * Lecture viewer page - displays video, notes (markdown), and attachments
  */
-export default async function LectureViewerPage({
-  params,
-}: LectureViewerPageProps) {
-  try {
-    // Fetch lecture with course and attachments
-    const lecture = await prisma.lecture.findUnique({
-      where: { id: params.lectureId },
-      include: {
-        course: {
-          select: { id: true, title: true },
-        },
-        attachments: {
-          orderBy: { createdAt: 'desc' },
-        },
-      },
-    })
+export default function LectureViewerPage() {
+  const params = useParams()
+  const courseId = params.id as string
+  const lectureId = params.lectureId as string
 
-    if (!lecture) {
-      notFound()
+  const [lecture, setLecture] = useState<Lecture | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    async function fetchLecture() {
+      try {
+        const response = await fetch(
+          `/api/courses/${courseId}/lectures/${lectureId}`
+        )
+        if (!response.ok) throw new Error('Lecture not found')
+        const data = await response.json()
+        setLecture(data)
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'An error occurred')
+      } finally {
+        setIsLoading(false)
+      }
     }
+    fetchLecture()
+  }, [courseId, lectureId])
 
-    // Verify lecture belongs to correct course
-    if (lecture.courseId !== params.id) {
-      notFound()
-    }
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-white flex items-center justify-center">
+        <p className="text-gray-600">Loading lecture...</p>
+      </div>
+    )
+  }
 
+  if (error || !lecture) {
     return (
       <div className="min-h-screen bg-gray-50">
-        {/* Header */}
         <header className="bg-white shadow">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
             <Link
-              href={`/courses/${params.id}`}
-              className="text-gray-600 hover:text-gray-900 text-sm font-medium mb-4 inline-block"
+              href={`/courses/${courseId}`}
+              className="text-primary-600 hover:underline"
             >
-              ← Back to Course
+              ← Back to course
             </Link>
           </div>
         </header>
-
-        {/* Main content */}
-        <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          {/* Lecture header */}
-          <div className="bg-white rounded-lg shadow p-6 mb-8">
-            <div className="flex items-center gap-3 mb-4">
-              <span className="inline-flex items-center justify-center w-8 h-8 bg-primary-100 text-primary-700 rounded-full text-sm font-bold">
-                {lecture.order}
-              </span>
-              <h1 className="text-3xl font-bold text-gray-900">{lecture.title}</h1>
-            </div>
-            {lecture.publishedAt && (
-              <p className="text-sm text-gray-600">
-                Published on {new Date(lecture.publishedAt).toLocaleDateString()}
-              </p>
-            )}
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+          <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+            <p className="text-red-800">{error || 'Lecture not found'}</p>
           </div>
-
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            {/* Main content */}
-            <div className="lg:col-span-2 space-y-8">
-              {/* Video player */}
-              {lecture.videoUrl ? (
-                <div className="bg-white rounded-lg shadow overflow-hidden">
-                  <div className="bg-black aspect-video flex items-center justify-center">
-                    {lecture.videoUrl.includes('youtube') ? (
-                      <iframe
-                        src={lecture.videoUrl}
-                        title={lecture.title}
-                        className="w-full h-full"
-                        allowFullScreen
-                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                      />
-                    ) : lecture.videoUrl.includes('mp4') || lecture.videoUrl.includes('webm') ? (
-                      <video
-                        src={lecture.videoUrl}
-                        title={lecture.title}
-                        controls
-                        className="w-full h-full"
-                      />
-                    ) : (
-                      <div className="text-white text-center">
-                        <p className="text-2xl mb-2">🎥</p>
-                        <p>Video content</p>
-                        <p className="text-sm text-gray-400 mt-2">{lecture.videoUrl}</p>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              ) : (
-                <div className="bg-white rounded-lg shadow p-12 text-center">
-                  <p className="text-gray-600">No video available for this lecture</p>
-                </div>
-              )}
-
-              {/* Notes */}
-              {lecture.notesMarkdown && (
-                <div className="bg-white rounded-lg shadow p-6">
-                  <h2 className="text-2xl font-bold text-gray-900 mb-4">📝 Lecture Notes</h2>
-                  <div className="prose-sm max-w-none">
-                    <MarkdownRenderer markdown={lecture.notesMarkdown} />
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Sidebar: Attachments */}
-            <aside className="lg:col-span-1">
-              {lecture.attachments.length > 0 && (
-                <div className="bg-white rounded-lg shadow p-6">
-                  <h3 className="text-lg font-bold text-gray-900 mb-4">📎 Materials</h3>
-                  <div className="space-y-2">
-                    {lecture.attachments.map((attachment) => (
-                      <a
-                        key={attachment.id}
-                        href={attachment.fileUrl}
-                        download
-                        className="flex items-center gap-3 p-3 bg-gray-50 rounded hover:bg-primary-50 transition text-sm"
-                      >
-                        <span className="text-lg">📄</span>
-                        <div className="flex-1 min-w-0">
-                          <p className="font-medium text-gray-900 truncate">
-                            {attachment.filename}
-                          </p>
-                          <p className="text-xs text-gray-600">{attachment.fileType}</p>
-                        </div>
-                        <span className="text-gray-400">↓</span>
-                      </a>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Related links */}
-              <div className="bg-primary-50 rounded-lg border border-primary-200 p-6 mt-6">
-                <h3 className="text-sm font-semibold text-primary-900 mb-3 uppercase">
-                  Navigation
-                </h3>
-                <div className="space-y-2 text-sm">
-                  <Link
-                    href={`/courses/${params.id}`}
-                    className="block text-primary-700 hover:text-primary-900 font-medium"
-                  >
-                    ← Back to Course
-                  </Link>
-                  <Link
-                    href="/courses"
-                    className="block text-primary-700 hover:text-primary-900 font-medium"
-                  >
-                    ← Browse All Courses
-                  </Link>
-                </div>
-              </div>
-            </aside>
-          </div>
-        </main>
-      </div>
-    )
-  } catch (error) {
-    console.error('Error loading lecture:', error)
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="bg-white rounded-lg shadow p-8 text-center max-w-md">
-          <h1 className="text-2xl font-bold text-gray-900 mb-4">Error</h1>
-          <p className="text-gray-600 mb-6">
-            Failed to load lecture. Please try again later.
-          </p>
-          <Link
-            href="/courses"
-            className="inline-block px-6 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition"
-          >
-            Back to Courses
-          </Link>
         </div>
       </div>
     )
   }
+
+  return (
+    <div className="min-h-screen bg-gray-50">
+      {/* Header */}
+      <header className="bg-white shadow">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+          <Link
+            href={`/courses/${courseId}`}
+            className="text-primary-600 hover:underline text-sm"
+          >
+            ← Back to {lecture.course.title}
+          </Link>
+        </div>
+      </header>
+
+      {/* Main content */}
+      <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        {/* Title */}
+        <h1 className="text-4xl font-bold text-gray-900 mb-2">
+          Lecture {lecture.order}: {lecture.title}
+        </h1>
+        <p className="text-gray-600 mb-8">From: {lecture.course.title}</p>
+
+        {/* Video player */}
+        {lecture.videoUrl && (
+          <div className="mb-12">
+            <div className="bg-black rounded-lg overflow-hidden shadow-lg mb-4">
+              <video
+                width="100%"
+                height="auto"
+                controls
+                className="w-full"
+              >
+                <source src={lecture.videoUrl} type="video/mp4" />
+                Your browser does not support the video tag.
+              </video>
+            </div>
+            <p className="text-sm text-gray-600">Video lecture content</p>
+          </div>
+        )}
+
+        {/* Attachments */}
+        {lecture.attachments.length > 0 && (
+          <div className="mb-12">
+            <h2 className="text-2xl font-bold text-gray-900 mb-6">Materials</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {lecture.attachments.map((attachment) => (
+                <a
+                  key={attachment.id}
+                  href={attachment.fileUrl}
+                  download
+                  className="p-4 bg-white border border-gray-200 rounded-lg hover:border-primary-500 hover:shadow-lg transition flex items-center gap-3"
+                >
+                  <div className="flex-shrink-0 w-12 h-12 bg-primary-50 rounded flex items-center justify-center">
+                    <span className="text-sm font-semibold text-primary-700">
+                      {attachment.fileType.toUpperCase()}
+                    </span>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-gray-900 truncate">
+                      {attachment.filename}
+                    </p>
+                    <p className="text-xs text-gray-500">{attachment.fileType}</p>
+                  </div>
+                  <span className="text-primary-600">↓</span>
+                </a>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Markdown notes */}
+        {lecture.notesMarkdown && (
+          <div className="mb-12">
+            <h2 className="text-2xl font-bold text-gray-900 mb-6">Lecture Notes</h2>
+            <div className="bg-white rounded-lg p-8 border border-gray-200 prose prose-sm max-w-none">
+              <ReactMarkdown>{lecture.notesMarkdown}</ReactMarkdown>
+            </div>
+          </div>
+        )}
+
+        {/* Empty state */}
+        {!lecture.videoUrl && !lecture.notesMarkdown && lecture.attachments.length === 0 && (
+          <div className="text-center py-12 bg-white rounded-lg border border-gray-200">
+            <p className="text-gray-600">No content available for this lecture yet.</p>
+          </div>
+        )}
+      </main>
+    </div>
+  )
 }

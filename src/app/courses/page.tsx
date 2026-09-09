@@ -1,96 +1,129 @@
-import { prisma } from '@/lib/prisma'
-import { notFound } from 'next/navigation'
-import Link from 'next/link'
-import { CourseCard } from '@/components/CourseCard'
+'use client'
 
-export const metadata = {
-  title: 'Courses - EduHub',
+import { useEffect, useState } from 'react'
+import Link from 'next/link'
+
+interface Course {
+  id: string
+  title: string
+  description: string | null
+  coverImage: string | null
+  instructor: {
+    name: string | null
+  }
+  _count: {
+    lectures: number
+    enrollments: number
+  }
 }
 
 /**
- * Course catalog page showing all published courses.
- * Server component using Prisma to fetch courses.
+ * Course catalog page - displays all published courses as cards
  */
-export default async function CoursesPage() {
-  try {
-    // Fetch all published courses
-    const courses = await prisma.course.findMany({
-      where: {
-        published: true,
-      },
-      include: {
-        instructor: {
-          select: { name: true },
-        },
-      },
-      orderBy: {
-        createdAt: 'desc',
-      },
-    })
+export default function CoursesPage() {
+  const [courses, setCourses] = useState<Course[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
-    return (
-      <div className="min-h-screen bg-gray-50">
-        {/* Header */}
-        <header className="bg-white shadow">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-            <Link href="/" className="text-gray-600 hover:text-gray-900 text-sm font-medium mb-4 inline-block">
-              ← Back to Home
-            </Link>
-            <h1 className="text-3xl font-bold text-gray-900">Browse Courses</h1>
-            <p className="text-gray-600 mt-2">Explore all available courses</p>
-          </div>
-        </header>
+  useEffect(() => {
+    async function fetchCourses() {
+      try {
+        const response = await fetch('/api/courses')
+        if (!response.ok) throw new Error('Failed to fetch courses')
+        const data = await response.json()
+        setCourses(data)
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'An error occurred')
+      } finally {
+        setIsLoading(false)
+      }
+    }
+    fetchCourses()
+  }, [])
 
-        {/* Main content */}
-        <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          {courses.length === 0 ? (
-            <div className="bg-white rounded-lg shadow p-12 text-center">
-              <div className="text-4xl mb-4">📚</div>
-              <h2 className="text-xl font-semibold text-gray-900 mb-2">
-                No courses available
-              </h2>
-              <p className="text-gray-600">
-                Courses will appear here once instructors create them.
-              </p>
-              <Link
-                href="/dashboard"
-                className="mt-6 inline-block px-6 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition"
-              >
-                Go to Dashboard
-              </Link>
-            </div>
-          ) : (
+  return (
+    <div className="min-h-screen bg-gray-50">
+      {/* Header */}
+      <header className="bg-white shadow">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+          <div className="flex justify-between items-center">
             <div>
-              <p className="text-gray-600 mb-6">
-                {courses.length} course{courses.length !== 1 ? 's' : ''} available
-              </p>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {courses.map((course) => (
-                  <CourseCard key={course.id} course={course} />
-                ))}
-              </div>
+              <Link href="/" className="text-2xl font-bold text-primary-700 hover:text-primary-800">
+                EduHub
+              </Link>
+              <h1 className="text-3xl font-bold text-gray-900 mt-2">Courses</h1>
+              <p className="text-gray-600 mt-1">Explore our course catalog</p>
             </div>
-          )}
-        </main>
-      </div>
-    )
-  } catch (error) {
-    console.error('Error loading courses:', error)
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="bg-white rounded-lg shadow p-8 text-center max-w-md">
-          <h1 className="text-2xl font-bold text-gray-900 mb-4">Error</h1>
-          <p className="text-gray-600 mb-6">
-            Failed to load courses. Please try again later.
-          </p>
-          <Link
-            href="/"
-            className="inline-block px-6 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition"
-          >
-            Return Home
-          </Link>
+            <Link
+              href="/dashboard"
+              className="px-4 py-2 bg-primary-600 text-white rounded-lg font-semibold hover:bg-primary-700 transition"
+            >
+              Dashboard
+            </Link>
+          </div>
         </div>
-      </div>
-    )
-  }
+      </header>
+
+      {/* Main content */}
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        {isLoading && (
+          <div className="flex justify-center py-12">
+            <p className="text-gray-600">Loading courses...</p>
+          </div>
+        )}
+
+        {error && (
+          <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-8">
+            <p className="text-red-800">Error: {error}</p>
+          </div>
+        )}
+
+        {!isLoading && courses.length === 0 && (
+          <div className="text-center py-12">
+            <p className="text-gray-600 text-lg">No courses available yet.</p>
+            <Link href="/dashboard" className="text-primary-600 hover:underline mt-2 block">
+              Return to dashboard
+            </Link>
+          </div>
+        )}
+
+        {!isLoading && courses.length > 0 && (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {courses.map((course) => (
+              <Link
+                key={course.id}
+                href={`/courses/${course.id}`}
+                className="bg-white rounded-lg shadow hover:shadow-lg transition overflow-hidden border border-gray-200 hover:border-primary-500"
+              >
+                {course.coverImage && (
+                  <div className="w-full h-48 bg-gray-200 overflow-hidden">
+                    <img
+                      src={course.coverImage}
+                      alt={course.title}
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                )}
+                <div className="p-6">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                    {course.title}
+                  </h3>
+                  <p className="text-gray-600 text-sm mb-4 line-clamp-2">
+                    {course.description || 'No description'}
+                  </p>
+                  <div className="flex justify-between text-xs text-gray-500">
+                    <span>{course._count.lectures} lectures</span>
+                    <span>{course._count.enrollments} students</span>
+                  </div>
+                  <p className="text-sm text-gray-700 font-medium mt-4">
+                    {course.instructor.name || 'Unknown instructor'}
+                  </p>
+                </div>
+              </Link>
+            ))}
+          </div>
+        )}
+      </main>
+    </div>
+  )
 }
