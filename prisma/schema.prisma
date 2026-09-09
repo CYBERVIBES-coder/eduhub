@@ -1,0 +1,153 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Enum for user roles
+enum Role {
+  STUDENT
+  INSTRUCTOR
+  ADMIN
+}
+
+// User model with authentication fields
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String    @unique
+  passwordHash  String?
+  role          Role      @default(STUDENT)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // Relations
+  courses       Course[]  @relation("CourseInstructor")
+  enrollments   Enrollment[]
+  submissions   Submission[]
+
+  @@index([email])
+  @@index([role])
+}
+
+// Course model
+model Course {
+  id            String    @id @default(cuid())
+  title         String
+  description   String?
+  coverImage    String?
+  instructorId  String
+  published     Boolean   @default(false)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // Relations
+  instructor    User      @relation("CourseInstructor", fields: [instructorId], references: [id], onDelete: Cascade)
+  lectures      Lecture[]
+  assignments   Assignment[]
+  enrollments   Enrollment[]
+
+  @@index([instructorId])
+  @@index([published])
+}
+
+// Lecture model (ordered within a course)
+model Lecture {
+  id              String    @id @default(cuid())
+  courseId        String
+  title           String
+  "order"         Int       // SQL reserved word, quoted
+  videoUrl        String?
+  notesMarkdown   String?
+  publishedAt     DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  // Relations
+  course          Course    @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  attachments     LectureAttachment[]
+
+  @@index([courseId])
+  @@index([publishedAt])
+}
+
+// Lecture attachments (slides, PDFs, etc.)
+model LectureAttachment {
+  id          String    @id @default(cuid())
+  lectureId   String
+  filename    String
+  fileUrl     String
+  fileType    String    // e.g., "pdf", "pptx", "docx"
+  createdAt   DateTime  @default(now())
+
+  // Relations
+  lecture     Lecture   @relation(fields: [lectureId], references: [id], onDelete: Cascade)
+
+  @@index([lectureId])
+}
+
+// Assignment model
+model Assignment {
+  id            String    @id @default(cuid())
+  courseId      String
+  title         String
+  description   String?
+  dueDate       DateTime?
+  maxPoints     Int       @default(100)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // Relations
+  course        Course    @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  submissions   Submission[]
+
+  @@index([courseId])
+  @@index([dueDate])
+}
+
+// Submission model (student responses to assignments)
+model Submission {
+  id            String    @id @default(cuid())
+  assignmentId  String
+  studentId     String
+  textContent   String?
+  fileUrl       String?
+  submittedAt   DateTime  @default(now())
+  grade         Int?
+  feedback      String?
+  gradedAt      DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // Relations
+  assignment    Assignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  student       User       @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([assignmentId, studentId])
+  @@index([studentId])
+  @@index([gradedAt])
+}
+
+// Enrollment model (tracks student registrations in courses)
+model Enrollment {
+  id            String    @id @default(cuid())
+  courseId      String
+  studentId     String
+  enrolledAt    DateTime  @default(now())
+  completedAt   DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // Relations
+  course        Course    @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  student       User      @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([courseId, studentId])
+  @@index([studentId])
+}
