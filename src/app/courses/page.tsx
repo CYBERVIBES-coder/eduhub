@@ -18,7 +18,7 @@ interface Course {
 }
 
 /**
- * Course catalog page - displays all published courses as cards
+ * Course catalog page with improved loading and empty states
  */
 export default function CoursesPage() {
   const [courses, setCourses] = useState<Course[]>([])
@@ -66,28 +66,40 @@ export default function CoursesPage() {
 
       {/* Main content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        {/* Loading skeleton */}
         {isLoading && (
-          <div className="flex justify-center py-12">
-            <p className="text-gray-600">Loading courses...</p>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 animate-pulse">
+            {[...Array(6)].map((_, i) => (
+              <div key={i} className="bg-white rounded-lg shadow h-72"></div>
+            ))}
           </div>
         )}
 
-        {error && (
+        {/* Error state */}
+        {error && !isLoading && (
           <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-8">
-            <p className="text-red-800">Error: {error}</p>
+            <h3 className="text-red-900 font-semibold mb-2">Error loading courses</h3>
+            <p className="text-red-700">{error}</p>
           </div>
         )}
 
-        {!isLoading && courses.length === 0 && (
-          <div className="text-center py-12">
-            <p className="text-gray-600 text-lg">No courses available yet.</p>
-            <Link href="/dashboard" className="text-primary-600 hover:underline mt-2 block">
-              Return to dashboard
+        {/* Empty state */}
+        {!isLoading && !error && courses.length === 0 && (
+          <div className="text-center py-16">
+            <div className="text-6xl mb-4">📚</div>
+            <h2 className="text-2xl font-bold text-gray-900 mb-4">No courses available</h2>
+            <p className="text-gray-600 mb-8">Check back soon for new courses to explore.</p>
+            <Link
+              href="/dashboard"
+              className="inline-block px-6 py-2 bg-primary-600 text-white rounded-lg font-semibold hover:bg-primary-700"
+            >
+              Go to Dashboard
             </Link>
           </div>
         )}
 
-        {!isLoading && courses.length > 0 && (
+        {/* Course grid */}
+        {!isLoading && !error && courses.length > 0 && (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {courses.map((course) => (
               <Link
@@ -95,28 +107,30 @@ export default function CoursesPage() {
                 href={`/courses/${course.id}`}
                 className="bg-white rounded-lg shadow hover:shadow-lg transition overflow-hidden border border-gray-200 hover:border-primary-500"
               >
-                {course.coverImage && (
-                  <div className="w-full h-48 bg-gray-200 overflow-hidden">
-                    <img
-                      src={course.coverImage}
-                      alt={course.title}
-                      className="w-full h-full object-cover"
-                    />
+                {course.coverImage ? (
+                  <img
+                    src={course.coverImage}
+                    alt={course.title}
+                    className="w-full h-48 object-cover"
+                  />
+                ) : (
+                  <div className="w-full h-48 bg-gradient-to-br from-blue-100 to-purple-100 flex items-center justify-center">
+                    <span className="text-4xl">📖</span>
                   </div>
                 )}
                 <div className="p-6">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2 line-clamp-2">
                     {course.title}
                   </h3>
                   <p className="text-gray-600 text-sm mb-4 line-clamp-2">
                     {course.description || 'No description'}
                   </p>
-                  <div className="flex justify-between text-xs text-gray-500">
-                    <span>{course._count.lectures} lectures</span>
-                    <span>{course._count.enrollments} students</span>
+                  <div className="flex justify-between text-xs text-gray-500 mb-3">
+                    <span>📚 {course._count.lectures} lectures</span>
+                    <span>👥 {course._count.enrollments} students</span>
                   </div>
-                  <p className="text-sm text-gray-700 font-medium mt-4">
-                    {course.instructor.name || 'Unknown instructor'}
+                  <p className="text-sm text-gray-700 font-medium">
+                    👨‍🏫 {course.instructor.name || 'Unknown instructor'}
                   </p>
                 </div>
               </Link>

@@ -2,6 +2,56 @@
 
 A modern, full-stack education platform built with Next.js 14, TypeScript, Tailwind CSS, Prisma, and PostgreSQL.
 
+## Features
+
+✅ **Phase 1-7 Complete**
+
+### Authentication & Authorization
+- Email/password registration and login with bcryptjs hashing
+- NextAuth.js with Prisma adapter
+- Role-based access control (Student, Instructor, Admin)
+- Protected routes with middleware
+
+### Courses & Lectures
+- Browse published courses with cover images
+- Detailed course pages with lecture lists
+- Video lecture viewer with markdown notes
+- Downloadable course materials (PDFs, slides, etc.)
+
+### Assignments & Submissions
+- Create assignments with deadlines and max points
+- Text-based student submissions
+- View submission status and deadlines
+- One submission per assignment per student
+
+### Grading
+- Instructor grading interface with all submissions
+- Inline grade entry and feedback
+- Student feedback and grade display
+- Grade history and tracking
+
+### Dashboards
+**Students:**
+- Enrolled courses at a glance
+- Upcoming deadlines (14-day window)
+- Recent grades and scores
+- Quick access to assignments
+
+**Instructors:**
+- Courses taught with enrollment counts
+- Pending grading indicators
+- Submission management
+- Grade tracking per course
+
+### UI/UX Polish
+- Loading states and skeleton screens
+- Error boundaries for graceful error handling
+- Empty states with helpful messaging
+- Responsive design (mobile, tablet, desktop)
+- Accessible forms and navigation
+- Modern Tailwind CSS styling
+- Clean typography and contrast
+
 ## Getting Started
 
 ### Prerequisites
@@ -20,6 +70,7 @@ A modern, full-stack education platform built with Next.js 14, TypeScript, Tailw
 2. **Install dependencies**
    ```bash
    npm install
+   npm install react-markdown  # For Phase 3 lecture notes
    ```
 
 3. **Set up environment variables**
@@ -29,6 +80,8 @@ A modern, full-stack education platform built with Next.js 14, TypeScript, Tailw
    Edit `.env.local` and add your PostgreSQL connection string:
    ```
    DATABASE_URL="postgresql://user:password@localhost:5432/eduhub"
+   NEXTAUTH_SECRET="your-secret-key-here"
+   NEXTAUTH_URL="http://localhost:3000"
    ```
 
 4. **Run database migrations**
@@ -48,27 +101,35 @@ A modern, full-stack education platform built with Next.js 14, TypeScript, Tailw
 ```
 eduhub/
 ├── prisma/
-│   └── schema.prisma      # Database schema
+│   └── schema.prisma           # Database schema
 ├── src/
-│   ├── app/               # Next.js App Router pages
-│   ├── components/        # Reusable React components
-│   └── lib/               # Utility functions & helpers
-├── .env.example           # Environment variables template
-├── BUILD_PLAN.md          # Detailed build phases
-└── README.md              # This file
+│   ├── app/
+│   │   ├── (auth)/             # Login/Register pages
+│   │   ├── api/                # API routes
+│   │   ├── courses/            # Course & lecture pages
+│   │   ├── dashboard/          # Role-based dashboards
+│   │   ├── instructor/         # Grading pages
+│   │   ├── layout.tsx          # Root layout with error boundary
+│   │   ├── globals.css         # Global styles
+│   │   └── page.tsx            # Landing page
+│   ├── components/
+│   │   ├── ErrorBoundary.tsx   # Error boundary
+│   │   ├── Loading.tsx         # Loading spinners/skeletons
+│   │   ├── EmptyState.tsx      # Empty state component
+│   │   ├── LoginForm.tsx       # Login form
+│   │   └── RegisterForm.tsx    # Registration form
+│   ├── lib/
+│   │   ├── auth.ts             # NextAuth configuration
+│   │   ├── prisma.ts           # Prisma client singleton
+│   │   ├── auth-utils.ts       # Password hashing utilities
+│   │   ├── validation.ts       # Form validation
+│   │   └── hooks.ts            # Custom React hooks
+│   └── middleware.ts           # Route protection middleware
+├── .env.example                # Environment variables template
+├── BUILD_PLAN.md               # Detailed build phases
+├── README.md                   # This file
+└── package.json
 ```
-
-## Development Phases
-
-See [BUILD_PLAN.md](./BUILD_PLAN.md) for detailed phase-by-phase instructions.
-
-- **Phase 1**: Database schema (✓ Complete)
-- **Phase 2**: Authentication
-- **Phase 3**: Course & lecture pages
-- **Phase 4**: Assignments & submissions
-- **Phase 5**: Instructor grading view
-- **Phase 6**: Dashboards
-- **Phase 7**: Polish & accessibility
 
 ## Useful Commands
 
@@ -89,24 +150,52 @@ npm run lint             # Run ESLint
 
 ## Database Schema
 
-Core models implemented in Phase 1:
+### Core Models
 
-- **User**: Authentication & role management (STUDENT, INSTRUCTOR, ADMIN)
-- **Course**: Course metadata and instructor assignment
-- **Lecture**: Ordered lectures with video/notes/attachments
-- **LectureAttachment**: Slides, PDFs, and supplementary materials
-- **Assignment**: Assignment titles, descriptions, and deadlines
-- **Submission**: Student submissions with grades and feedback
-- **Enrollment**: Student course registrations
+- **User** - Authentication & roles (STUDENT, INSTRUCTOR, ADMIN)
+- **Course** - Course metadata, instructor assignment
+- **Lecture** - Ordered lectures with video/notes/attachments
+- **LectureAttachment** - Slides, PDFs, supplementary materials
+- **Assignment** - Assignment titles, descriptions, deadlines, max points
+- **Submission** - Student responses with grades and feedback
+- **Enrollment** - Student course registrations
 
 ## Tech Stack
 
 - **Frontend**: Next.js 14 (App Router), React 18, TypeScript
-- **Styling**: Tailwind CSS
+- **Styling**: Tailwind CSS (responsive, accessible)
 - **Database**: PostgreSQL with Prisma ORM
-- **Authentication**: NextAuth.js
+- **Authentication**: NextAuth.js with Prisma adapter
+- **Security**: bcryptjs for password hashing
+- **Markdown**: react-markdown for lecture notes
 - **Deployment**: Vercel (frontend) + Supabase/Railway (database)
+
+## Development Phases
+
+See [BUILD_PLAN.md](./BUILD_PLAN.md) for detailed phase-by-phase implementation guide.
+
+- ✅ **Phase 1**: Database schema
+- ✅ **Phase 2**: Authentication (login/register)
+- ✅ **Phase 3**: Course & lecture pages
+- ✅ **Phase 4**: Assignments & submissions
+- ✅ **Phase 5**: Instructor grading view
+- ✅ **Phase 6**: Role-aware dashboards
+- ✅ **Phase 7**: Polish (loading states, error handling, improved landing page)
+
+## Future Enhancements
+
+- Discussion/Q&A per lecture (Phase 6+)
+- File uploads for submissions
+- Email notifications for deadlines
+- Google/Microsoft OAuth
+- Admin panel for user management
+- Course analytics and reporting
+- Mobile app
 
 ## License
 
 MIT
+
+## Support
+
+For issues or questions, please open a GitHub issue or contact the development team.
